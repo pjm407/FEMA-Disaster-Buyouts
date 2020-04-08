@@ -1,0 +1,159 @@
+
+##  import packages/install libraries
+```{r include=FALSE}
+packages <- c("broom","circlize","corrr","data.table","devtools","DiagrammeR","doBy","edgebundleR",
+              "elevatr","extrafont","fastDummies","FNN","geosphere","ggmap","GGally","ggraph","ggthemes","ggridges","googleway",
+              "gridExtra","htmlwidgets","httr","igraph","jsonlite","leaflet","lubridate","magrittr","maptools","Matrix","naniar","network","networkD3",
+              "plotly","plyr","RANN","RColorBrewer","readr","readxl","reshape2","revgeo","Rcpp","rgdal","rgeos","scales","shiny","sna","sp","spdep","sqldf",
+              "tidyverse","tigris","viridisLite","visNetwork","zipcode","zoo")
+
+packages <- lapply(packages, FUN = function(x){
+  if(!require(x, character.only = TRUE)){
+    install.packages(x, repos = "http://cran.us.r-project.org")
+    library(x, character.only = TRUE)}})
+```
+
+##  set up working directory
+```{r include=TRUE}
+getwd()
+```
+
+```{r include=TRUE}
+setwd("/Desktop/NYU/Thesis Analysis")
+getwd()
+```
+
+##  create graphic map theme
+```{r include=TRUE}
+mapTheme <- function(base_size = 48) {
+  theme(
+    text = element_text(color = "black", family = "Times New Roman"),
+    plot.title = element_text(size = 25, colour = "black", face = "bold"),
+    plot.subtitle=element_text(face="italic", size = 20),
+    plot.caption=element_text(hjust=0,face="italic",size = 16),
+    axis.ticks = element_blank(),
+    panel.background = element_blank(),
+    panel.grid.major = element_line("grey80", size = 0.1),
+    axis.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+    axis.text = element_blank(),
+        axis.text.x=element_text(color = "black", family = "Times New Roman", size = 22),
+        axis.text.y=element_text(color = "black", family = "Times New Roman", size = 22),
+    axis.ticks.x=element_blank(),
+    axis.ticks.y=element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "seashell", color = "white"),
+    plot.background = element_blank(),
+    legend.background = element_rect(fill = "white", linetype="solid", colour = "white"),
+    legend.title = element_text(colour = "black", face = "italic", size = 22),
+    legend.text = element_text(colour = "black", face = "bold", size = 22),
+    legend.position="right"
+  )
+}
+```
+
+##  upload fema data
+```{r include=TRUE}
+fema <- fread("fema.csv")
+glimpse(fema)
+```
+
+##  
+```{r include=TRUE}
+levels(fema$`Disaster Description`)
+```
+
+##  subset only hurricane-related disasters
+```{r include=TRUE}
+disasters <- c("HURRICANES", "HURR", "TD", "TROPICAL")
+fema_hurr <- fema %>%
+  filter(str_detect(`Disaster Description`, paste(disasters, collapse = "|")))
+```
+
+##  manually clean up hurricane names
+```{r include=TRUE}
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="SEVERE STORMS AND FLOODING (HURRICANE ALBERTO)"] <- "HURRICANE ALBERTO"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="TORNADOES, FLOODING TORRENTIAL RAIN(TROP STORM ALBERTO)"] <- "HURRICANE ALBERTO"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="TX-TROPICAL STORM ALLISON-06-06-2001"] <- "HURRICANE ALLISON"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="TX-HURRICANE ALLISON-06-06-2001"] <- "HURRICANE ALLISON"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="TROPICAL STORM BONNIE AND HURRICANE CHARLEY"] <- "HURRICANE CHARLEY"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="SEVERE STORMS, FLOODING,HIGH WINDS, ASSOC WITH HURR DANNY"] <- "HURRICANE DANNY"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="HURRICANE FLOYD MAJOR DISASTER DECLARATIONS"] <- "HURRICANE FLOYD"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="HURRICANE FRAN AND ASSOCIATED HEAVY RAINS,FLOODING HIGHWIND"] <- "HURRICANE FRAN"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="HURRICANE FRAN AND ASSOCIATED SEVERE STORM COND"] <- "HURRICANE FRAN"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="FLOODING ASSOCIATED WITH HURRICANE FRAN"] <- "HURRICANE FRAN"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="SEVERE STORMS AND FLOODING ASSOC WITH HURRICANE FRAN"] <- "HURRICANE FRAN"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="SEVERE STORMS AND FLOODING ASSOCIATED WITH HURRICANE FRANCES"] <- "HURRICANE FRANCES"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="SEVERE STORMS, FLOODING AND TORNADOES ASSOCIATED W TD GASTON"] <- "HURRICANE GASTON"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="HURRICANE GEORGES - 18 SEP 98"] <- "HURRICANE GEORGES"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="HURRICANE GEORGES - TEXAS"] <- "HURRICANE GEORGES"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="HURRICANE GEORGES - 18 SEP 98"] <- "HURRICANE GEORGES"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="SEVERE STORMS AND FLOODING ASSOCIATED WITH HURRICANE IDA AND A NOR'EAST"] <- "HURRICANE IDA"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="SEVERE WIND STORM ASSOCIATED WITH HURRICANE IKE"] <- "HURRICANE IKE"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="SEVERE STORMS AND FLOODING FROM THE REMANANTS OF HURRICANE JEANNE"] <- "HURRICANE JEANNE"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="REMNANTS OF HURRICANE LEE"] <- "HURRICANE LEE"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="TX-TROPICAL STORM ALLISON-06-06-2001"] <- "HURRICANE LEE"
+fema_hurr$`Disaster Description`[fema_hurr$`Disaster Description`=="SEVERE STORMS AND FLOODING DUE TO THE REMNANTS OF HURRICANE SANDY"] <- "HURRICANE SANDY"
+```
+
+##  create buyout count dataframe by hurricane and year
+```{r include=TRUE}
+fema_all <- as.data.frame(table(fema_hurr$`Disaster Description`,fema_hurr$`Fiscal Year`))
+fema_all <- fema_all %>% filter(Freq > 0)
+colnames(fema_all)[colnames(fema_all)=="Var1"] <- "Hurricane"
+colnames(fema_all)[colnames(fema_all)=="Var2"] <- "Year"
+```
+
+##  standardize hurricane names
+```{r include=TRUE}
+fema_all$Hurricane <- gsub("TROPICAL STORM ", "HURRICANE ", fema_all$Hurricane)
+fema_all$Hurricane <- gsub("TROPICAL DEPRESSION ", "HURRICANE ", fema_all$Hurricane)
+fema_all$Hurricane <- gsub("HURRICANE ", "", fema_all$Hurricane)
+fema_all$Hurricane <- gsub("MAJOR DISASTER DECLARATIONS", "", fema_all$Hurricane)
+fema_all$Hurricane <- gsub("TX-ALLISON-06-06-2001", "ALLISON", fema_all$Hurricane)
+fema_all$Hurricane <- gsub("FRAN AND ASSOCIATED HEAVY RAINS,FLOODING HIGHWIND", "FRAN", fema_all$Hurricane)
+fema_all$Hurricane <- gsub("FRAN AND ASSOCIATED SEVERE STORM COND", "FRAN", fema_all$Hurricane)
+fema_all$Hurricane <- gsub("FLOODING ASSOCIATED WITH FRAN", "FRAN", fema_all$Hurricane)
+fema_all$Hurricane <- gsub("SEVERE STORMS AND FLOODING ASSOC WITH FRAN", "FRAN", fema_all$Hurricane)
+fema_all$Hurricane <- gsub("SEVERE STORMS AND FLOODING DUE TO THE REMNANTS OF SANDY", "SANDY", fema_all$Hurricane)
+fema_all$Hurricane <- gsub(" ", "", fema_all$Hurricane)
+```
+
+##  create new buyout count dataframe by hurricane and year  
+```{r include=TRUE}
+fema_all <- fema_all %>%
+  group_by(Hurricane, Year) %>%
+  summarise(Freq = sum(Freq))
+```
+
+##  create and save hurricane-related buyout graphic
+```{r include = TRUE}
+fema_sum <- fema_all %>% 
+  ggplot(aes(y = Freq, x = Year)) +
+  geom_point(aes(size = Freq, colour = Freq), pch = 19, alpha = .9) +
+  geom_rug(aes(y = Freq, x = "", colour = Freq),  alpha = .9, size = 2.5) +
+  labs(title = "Irene and Sandy account for nearly 20% of all U.S. hurricane-related buyouts",
+       subtitle = "Total FEMA-funded, hurricane-related buyouts between 1989 and 2017",
+       y = "", x = "",
+       caption = "\nSource: Federal Emergency Management Agency (FEMA)") +
+  scale_y_continuous(label = comma,
+                     breaks=c(0, 500, 750, 1000, 1500, 1750, 2000)) + 
+  scale_size_continuous(range = c(5, 60),
+                        guide=FALSE) +
+  geom_label_repel(data = subset(fema_all2, Hurricane == "ALLISON" | Hurricane == "FLOYD" | 
+                                   Hurricane == "SANDY" | Hurricane == "KATRINA" | 
+                                   Hurricane == "IRENE" | Hurricane == "FRAN"),  
+                   aes(x = Year,  y = Freq, label = Hurricane), color = "black", 
+                   fill = "seashell", alpha = .9, point.padding = 0.95, fontface = "bold", size = 6) +
+  scale_color_viridis_c(name = "Buyout count\nby hurricane",direction = -1, option = "plasma", limits = c(0,2000),label = comma) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  mapTheme() 
+fema_sum             
+ggsave("fema_sum.png", fema_sum, width = 13.5, height = 9, device = "png") 
+```
+
+##  save dataframe
+```{r include=TRUE}
+write.csv(fema_all, "fema_hurricane_sum.csv")
+```
