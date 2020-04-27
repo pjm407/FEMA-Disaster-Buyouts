@@ -1,6 +1,6 @@
 # fema disaster buyouts
 
-In R, wrangle the FEMA disaster buyout data released by NPR and create a summary graphic.
+Using R, wrangle the FEMA disaster buyout data released by NPR and create a summary graphic.
 
 Original data source:
 
